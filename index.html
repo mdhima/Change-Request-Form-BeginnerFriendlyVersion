@@ -1337,6 +1337,7 @@
         const property = el.property.value.trim();
         const utility = el.utility.value.trim();
         const phone = el.phone.value.trim();
+        const partyLabel = activeWork.agent ? 'Authorized Agent(s)' : 'Owner(s)';
 
         if (need.has('ticket')) {
           if (ticket.length !== 7) errs.push('Ticket # must be exactly 7 digits.');
@@ -1354,13 +1355,12 @@
 
         if (need.has('actionType')) {
           const any = el.actionChecks.some(c => c.checked);
-          if (!any) errs.push('Select an Owner(s) action: New, Add, Remove, or Correct.');
+          if (!any) errs.push(`Select an ${partyLabel} action: New, Add, Remove, or Correct.`);
         }
         if (need.has('owner')) {
           const any = el.ownerLines.some(i => i.value.trim() !== '');
           if (!any) {
-            if (activeWork.agent && !activeWork.ownership) errs.push('Enter at least one Authorized Agent(s) line.');
-            else errs.push('Enter at least one Owner(s) line.');
+            errs.push(`Enter at least one ${partyLabel} line.`);
           }
         }
 
