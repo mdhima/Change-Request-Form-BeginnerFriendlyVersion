@@ -79,6 +79,12 @@
 
     .field .label { white-space: nowrap; }
 
+    /* Top key field labels (Roll / Utility / Property Location) */
+    .head-label {
+      font-size: 15pt;
+      font-weight: 500; /* bigger label, not bold */
+    }
+
     .line-input {
       width: 100%;
       border: 0;
@@ -90,6 +96,10 @@
       line-height: 1;
       outline: none;
       background: transparent;
+    }
+
+    .line-input.key {
+      font-size: var(--key-font);
     }
 
     /* Ticket field is right-aligned like the PDF */
@@ -116,6 +126,8 @@
     .roll .prefix {
       font-weight: 700;
       padding-bottom: 2px;
+      font-size: var(--key-font);
+      line-height: 1;
     }
 
     
@@ -140,7 +152,7 @@
       margin: 0;
       background: transparent;
       text-align: center;
-      font-size: var(--write-font);
+      font-size: var(--key-font);
       font-weight: 500;
       line-height: 1;
       outline: none;
@@ -171,6 +183,9 @@
     /* Slightly tighter slots for roll/utility so they fit nicely */
     #rollSlots .digit-slot { width: 16px; }
     #utilitySlots .digit-slot { width: 18px; }
+
+    /* Make Roll/Utility/Property Location a touch larger for readability */
+    #propertyLocation { font-size: var(--key-font); }
 
     /* When we flag roll/utility as required, outline the whole slot group */
     .slot-wrap.required-border { outline: 2px solid #c80000; outline-offset: 2px; }
@@ -222,15 +237,14 @@
       margin: 2px 0;
     }
 
-    /* Checkbox styling: consistent larger squares across the entire form */
+    /* Checkbox styling: keep default look, just a consistent size */
     .paper input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       margin: 0;
-      accent-color: #1c4aa0;
-      outline: 1px solid #1c4aa0;
-      outline-offset: -1px;
+      vertical-align: middle;
     }
+
 
     .box-right {
       padding: 0;
@@ -241,6 +255,7 @@
       /* Line spacing tuned to match the PDF look */
       --write-line-h: 0.31in; /* ~29.8px at 96dpi */
       --write-font: 13pt;
+      --key-font: 15pt;
     }
 
     .write-grid {
@@ -414,19 +429,32 @@
     @page { size: letter; margin: 0.22in; }
 
     @media print {
-      /* A touch more print-only shrink so the entire form fits on ONE page */
-      body {background: #fff; padding: 0; margin: 0; }
-      .paper { box-shadow: none; padding: 0; width: 100%; max-width: 8.5in; min-height: auto; }
-      /* Ctrl+P print: keep the page perfectly centered, but DO NOT use transform scaling (it creates a blank 2nd page). */
-      body:not(.clean-output) .paper {
-        zoom: 0.94;
-        margin: 0 auto !important;
-        width: 100% !important;
-        max-width: 8.5in !important;
-        transform: none !important;
-      }
+      /* Make print output more consistent and better balanced on paper */
+      @page { size: letter; margin: 0.50in; }
 
-      /* Hide the work-button header/controls when printing */
+      :root { --print-scale: 0.95; }
+
+      body {
+        background: #fff;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .paper {
+        box-shadow: none;
+        padding: 0;
+        width: 7.5in;
+        max-width: 7.5in;
+        min-height: auto;
+        margin: 0 auto !important;
+        zoom: var(--print-scale);
+        transform: none !important;
+        transform-origin: top center;
+      }
+/* Hide the work-button header/controls when printing */
       .no-print { display: none !important; }
 
       /* Keep the entire form on one page */
@@ -436,7 +464,7 @@
       html, body { -webkit-text-size-adjust: 100%; }
 
       /* Make checkboxes print reliably */
-      input[type="checkbox"] { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      input[type="checkbox"] { -webkit-print-color-adjust: exact; print-color-adjust: exact; accent-color: #000; }
 
       /* Do NOT print placeholder hints (e.g., mm/dd/yyyy) when fields are blank */
       input:placeholder-shown,
@@ -459,21 +487,22 @@
         opacity: 0 !important;
       }
 
-      /* Print-only squeeze so EVERYTHING fits one page */
+      /* Print sizing tweaks (still 1 page) */
       :root {
-        --write-line-h: 0.260in;
-        --write-font: 10.75pt;
+        --write-line-h: 0.265in;
+        --write-font: 12pt;
+        --key-font: 16pt;
       }
-      .rule { margin: 6px 0 10px; }
-      .field { margin: 5px 0; }
-      .section-title { margin: 6px 0 5px; }
-      .subsection-title { margin: 8px 0 5px; }
-      .bottom { margin-top: 6px; gap: 10px; }
-      .sig { margin: 4px 0; }
-      .line-input { height: 17px; font-size: 10.8pt; }
-      .ticket .line-input { height: 17px; }
-      .sig .line-input { height: 17px; }
-      .receipt { height: 1.72in; }
+      .rule { margin: 7px 0 11px; }
+      .field { margin: 6px 0; }
+      .section-title { margin: 7px 0 6px; }
+      .subsection-title { margin: 10px 0 6px; }
+      .bottom { margin-top: 8px; gap: 12px; }
+      .sig { margin: 5px 0; }
+      .line-input { height: 19px; font-size: 11.5pt; }
+      .ticket .line-input { height: 19px; }
+      .sig .line-input { height: 19px; }
+      .receipt { height: 1.96in !important; }
     }
 
     /* ===== Screen-only UI controls (does not affect printed form) ===== */
@@ -621,14 +650,15 @@
 
     /* Clean-output squeeze so Save as PDF stays on one page (does not affect normal on-screen view) */
     body.clean-output .paper {
-      transform: scale(0.94);
+      transform: scale(0.98);
       transform-origin: top center;
     }
 
     
     body.clean-output {
-      --write-line-h: 0.260in;
-      --write-font: 10.75pt;
+      --write-line-h: 0.265in;
+      --write-font: 11.5pt;
+      --key-font: 15pt;
     }
     body.clean-output .rule { margin: 6px 0 10px; }
     body.clean-output .field { margin: 5px 0; }
@@ -636,10 +666,10 @@
     body.clean-output .subsection-title { margin: 8px 0 5px; }
     body.clean-output .bottom { margin-top: 6px; gap: 10px; }
     body.clean-output .sig { margin: 4px 0; }
-    body.clean-output .line-input { height: 17px; font-size: 10.8pt; }
-    body.clean-output .ticket .line-input { height: 17px; }
-    body.clean-output .sig .line-input { height: 17px; }
-    body.clean-output .receipt { height: 1.72in; }
+    body.clean-output .line-input { height: 18px; font-size: 11.25pt; }
+    body.clean-output .ticket .line-input { height: 18px; }
+    body.clean-output .sig .line-input { height: 18px; }
+    body.clean-output .receipt { height: 1.96in; }
     /* Screen-only helpers (hidden in Print + Save-as-PDF output) */
     .screen-only { display: block; }
     body.clean-output .screen-only { display: none !important; }
@@ -901,7 +931,7 @@
     <div class="rule"></div>
 
     <div class="field roll">
-        <div class="label">Assessment Roll Number:</div>
+        <div class="label head-label">Assessment Roll Number:</div>
         <div class="prefix">19</div>
 
         <div id="rollSlots" class="slot-wrap" aria-label="Assessment roll number">
@@ -930,7 +960,7 @@
       </div>
 
     <div class="field">
-        <div class="label">Water/Utility Account Number:</div>
+        <div class="label head-label">Water/Utility Account Number:</div>
 
         <div id="utilitySlots" class="slot-wrap" aria-label="Water/utility account number">
           <!-- 9 digits total -->
@@ -950,8 +980,8 @@
       </div>
 
     <div class="field">
-      <div class="label">Property Location:</div>
-      <input id="propertyLocation" class="line-input" type="text" aria-label="Property location" />
+      <div class="label head-label">Property Location:</div>
+      <input id="propertyLocation" class="line-input key" type="text" aria-label="Property location" />
     </div>
 
     <div class="section-title">Account Information</div>
@@ -969,16 +999,14 @@
         </div>
 
         <div class="box-right" id="ownerNamesBox">
-          <!-- Owner name(s): 7 writeable lines, spaced like the PDF -->
+          <!-- Owner name(s): 5 writeable lines, spaced like the PDF -->
           <div class="write-grid" role="group" aria-label="Owner name lines">
             <div class="line-row"><input id="ownerLine1" class="line-text owner-line" type="text" aria-label="Owner line 1" /></div>
             <div class="line-row"><input id="ownerLine2" class="line-text owner-line" type="text" aria-label="Owner line 2" /></div>
             <div class="line-row"><input id="ownerLine3" class="line-text owner-line" type="text" aria-label="Owner line 3" /></div>
             <div class="line-row"><input id="ownerLine4" class="line-text owner-line" type="text" aria-label="Owner line 4" /></div>
             <div class="line-row"><input id="ownerLine5" class="line-text owner-line" type="text" aria-label="Owner line 5" /></div>
-            <div class="line-row"><input id="ownerLine6" class="line-text owner-line" type="text" aria-label="Owner line 6" /></div>
-            <div class="line-row"><input id="ownerLine7" class="line-text owner-line" type="text" aria-label="Owner line 7" /></div>
-          </div>
+</div>
         </div>
       </div>
 
@@ -1021,7 +1049,7 @@
         <input id="deleteMortgage" type="checkbox" />
       </div>
       <div class="m-right" id="mortgageBox">
-        <div><strong>Effective date:</strong></div>
+        <div>Effective date:</div>
         <div class="date-input-wrap"><input id="effectiveDate" class="line-input date-input" type="text" placeholder="mm/dd/yyyy" aria-label="Mortgage effective date" /><button type="button" class="date-cal-btn" aria-label="Choose mortgage effective date" data-for="effectiveDate"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1zm12 8H5v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10zM6 6H5a1 1 0 0 0-1 1v1h16V7a1 1 0 0 0-1-1h-1v1a1 1 0 1 1-2 0V6H8v1a1 1 0 1 1-2 0V6z"/></svg></button><input class="date-native" type="date" tabindex="-1" aria-hidden="true" /></div>
       </div>
     </div>
@@ -1057,7 +1085,7 @@
         </div>
         <div class="sig">
           <div>Telephone Number:</div>
-          <input id="phoneNumber" class="line-input" type="text" inputmode="numeric" aria-label="Telephone number" />
+          <input id="phoneNumber" class="line-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="10" aria-label="Telephone number" />
         </div>
         <div class="sig">
           <div>CSR Name:</div>
@@ -1219,9 +1247,15 @@
       }
 
       function digitsOnly(inputEl){
+        if (!inputEl) return;
         inputEl.addEventListener('input', () => {
           const before = inputEl.value;
-          const after = before.replace(/\D+/g, '');
+          let after = before.replace(/\D+/g, '');
+
+          // If the element has a maxlength, respect it (useful for Ticket #, Phone #, etc.)
+          const max = (typeof inputEl.maxLength === 'number' && inputEl.maxLength > 0) ? inputEl.maxLength : null;
+          if (max) after = after.slice(0, max);
+
           if (after !== before) inputEl.value = after;
         });
       }
