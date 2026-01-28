@@ -287,6 +287,14 @@
       min-width: 0;
     }
 
+    /* When Authorized Agent work is selected, the left title wraps to 2 lines and the row height grows.
+       Stretch the 5 input lines to fill that extra height evenly (avoids extra padding on the last line). */
+    .paper.agent-mode #ownerNamesBox .write-grid {
+      height: 100%;
+      grid-template-rows: repeat(5, 1fr);
+      grid-auto-rows: 1fr;
+    }
+
     /* Keep text comfortably off the rule line in print */
     @media print {
       :root { --write-font: 13pt; }
@@ -503,6 +511,10 @@
       .ticket .line-input { height: 19px; }
       .sig .line-input { height: 19px; }
       .receipt { height: 1.96in !important; }
+
+      /* Stretch Owner/Agent name lines to fill the full box height evenly (prevents blank padding at bottom) */
+      #ownerNamesBox { display: flex; }
+      #ownerNamesBox .write-grid { flex: 1; height: 100%; grid-auto-rows: 1fr !important; }
     }
 
     /* ===== Screen-only UI controls (does not affect printed form) ===== */
@@ -1187,6 +1199,7 @@
       function updateOwnerTitle(){
         if (!ownerTitleEl) return;
         ownerTitleEl.textContent = activeWork.agent ? 'Authorized Agent(s)' : ownerTitleDefault;
+        paper.classList.toggle('agent-mode', !!activeWork.agent);
       }
 
 
