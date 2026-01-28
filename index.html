@@ -1173,11 +1173,11 @@
       // Requirements are based on the old form idea (work buttons decide which fields are required).
       // This print layout is the official form, so some work types map to the same fields.
       const requirements = {
-        ownership:  ['ticket','roll','property','actionType','owner','closingDate','printName','phone'],
-        owner:      ['ticket','roll','property','actionType','owner','printName','phone'],
-        mailing:    ['ticket','roll','property','mailing','printName','phone'],
-        agent:      ['ticket','roll','property','owner','printName','phone'],
-        mortgage:   ['ticket','roll','property','mortgage','mortDate','printName','phone'],
+        ownership:  ['ticket','roll','property','actionType','owner','closingDate','printName','phone', 'csrName'],
+        owner:      ['ticket','roll','property','actionType','owner','printName','phone', 'csrName'],
+        mailing:    ['ticket','roll','property','mailing','printName','phone', 'csrName'],
+        agent:      ['ticket','roll','property','owner','printName','phone', 'csrName'],
+        mortgage:   ['ticket','roll','property','mortgage','mortDate','printName','phone', 'csrName'],
       };
 
       // Swap the left label to match the selected work type
@@ -1250,6 +1250,7 @@
 
         if (need.has('printName')) el.printName.classList.add('required-border');
         if (need.has('phone')) el.phone.classList.add('required-border');
+        if (need.has('csrName')) el.csrName.classList.add('required-border');
       }
 
       function showErrors(errors){
@@ -1384,6 +1385,10 @@
 
         if (need.has('printName')) {
           if (!el.printName.value.trim()) errs.push('Name (please print) is required.');
+        }
+
+        if (need.has('csrName')) {
+          if (!el.csrName.value.trim()) errs.push("CSR Name is required.");
         }
 
         if (need.has('phone')) {
