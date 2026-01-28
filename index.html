@@ -1151,6 +1151,23 @@
         mortgageBox: qs('#mortgageBox'),
       };
 
+      // Owner(s) action checkboxes: allow only one selected at a time
+      // (keeps checkbox look, but behaves like a radio group).
+      function makeSingleSelect(checkboxes){
+        if (!Array.isArray(checkboxes) || checkboxes.length === 0) return;
+        checkboxes.forEach(cb => {
+          if (!cb) return;
+          cb.addEventListener('change', () => {
+            if (!cb.checked) return; // user unchecked; allow none selected
+            checkboxes.forEach(other => {
+              if (other && other !== cb) other.checked = false;
+            });
+          });
+        });
+      }
+      makeSingleSelect(el.actionChecks);
+
+
       const allPaperInputs = qsa('input, textarea, select, button.date-cal-btn', paper);
 
       // Requirements are based on the old form idea (work buttons decide which fields are required).
@@ -1372,6 +1389,7 @@
         if (need.has('phone')) {
           if (!phone) errs.push('Telephone Number is required.');
           else if (!/^\d+$/.test(phone)) errs.push('Telephone Number must contain digits only.');
+          else if (phone.length !== 10) errs.push('Telephone Number must be exactly 10 digits.');
         }
 
         return errs;
@@ -1623,6 +1641,13 @@
       qs('#btnClear').addEventListener('click', resetAll);
 
       qs('#btnPrint').addEventListener('click', () => {
+        // Allow printing a blank form when no work type is selected.
+        if (!hasAnyWorkSelected()) {
+          showErrors([]);
+          withCleanOutput(() => window.print());
+          return;
+        }
+
         applyRequirements();
         const errs = validate();
         showErrors(errs);
