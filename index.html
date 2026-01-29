@@ -415,7 +415,7 @@
       font-weight: 800;
     }
 
-    .sig .line-input { height: 22px; font-size: 12pt; }
+    .sig .line-input { height: 22px; font-size: 12pt; padding: 4px 2px 0; line-height: 1; }
 
     .receipt {
       border: 3px solid #000;
@@ -506,10 +506,10 @@
       .section-title { margin: 7px 0 6px; }
       .subsection-title { margin: 10px 0 6px; }
       .bottom { margin-top: 8px; gap: 12px; }
-      .sig { margin: 5px 0; }
+      .sig { margin: 14px 0; }
       .line-input { height: 19px; font-size: 11.5pt; }
       .ticket .line-input { height: 19px; }
-      .sig .line-input { height: 19px; }
+      .sig .line-input { height: 34px; padding: 14px 2px 0; line-height: 1; }
       .receipt { height: 1.96in !important; }
 
       /* Stretch Owner/Agent name lines to fill the full box height evenly (prevents blank padding at bottom) */
@@ -677,10 +677,10 @@
     body.clean-output .section-title { margin: 6px 0 5px; }
     body.clean-output .subsection-title { margin: 8px 0 5px; }
     body.clean-output .bottom { margin-top: 6px; gap: 10px; }
-    body.clean-output .sig { margin: 4px 0; }
+    body.clean-output .sig { margin: 12px 0; }
     body.clean-output .line-input { height: 18px; font-size: 11.25pt; }
     body.clean-output .ticket .line-input { height: 18px; }
-    body.clean-output .sig .line-input { height: 18px; }
+    body.clean-output .sig .line-input { height: 30px; padding: 12px 2px 0; line-height: 1; }
     body.clean-output .receipt { height: 1.96in; }
     /* Screen-only helpers (hidden in Print + Save-as-PDF output) */
     .screen-only { display: block; }
@@ -1659,10 +1659,11 @@
       qs('#btnClear').addEventListener('click', resetAll);
 
       qs('#btnPrint').addEventListener('click', () => {
-        // Allow printing a blank form when no work type is selected.
+        // If no work type is selected, block printing and show an error.
         if (!hasAnyWorkSelected()) {
-          showErrors([]);
-          withCleanOutput(() => window.print());
+          showErrors(['Select at least one work type at the top.']);
+          // Keep the message in view
+          try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
           return;
         }
 
