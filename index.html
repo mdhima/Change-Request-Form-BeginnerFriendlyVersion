@@ -895,7 +895,17 @@
     }
 
 
-  </style>
+  
+
+    /* ===== Screen-only: shrink CSR receipt box (does NOT affect printing) ===== */
+    @media screen {
+      .bottom { grid-template-columns: 1fr 2.25in; }
+      .receipt { height: 1.75in; }
+
+      body.clean-output .bottom { grid-template-columns: 1fr 2.25in; }
+      body.clean-output .receipt { height: 1.50in; }
+    }
+</style>
 </head>
 <body>
 
