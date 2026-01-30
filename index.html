@@ -579,6 +579,32 @@
       color: #ffffff;
     }
 
+
+.modifiers{
+  margin-top: 10px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mod-btn{
+  border-radius: 10px;
+  border: 2px solid #000000;
+  background: #ffffff;
+  color: #000000;
+  padding: 8px 12px;
+  font-weight: 800;
+  font-size: 10.75pt;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mod-btn.active{
+  background: #0b0b0b;
+  color: #ffffff;
+}
+
     .pill {
       padding: 6px 10px;
       border-radius: 999px;
@@ -900,12 +926,13 @@
         <button type="button" class="work-btn" data-work="owner">Add/Remove Owner</button>
         <button type="button" class="work-btn" data-work="agent">Authorized Agent</button>
         <button type="button" class="work-btn" data-work="mortgage">Mortgage Delete</button>
-      </div>
+</div>
 
       <div class="ui-actions">
         <button type="button" class="primary" id="btnPrint">Print Form</button>
         
         <button type="button" id="btnClear">Clear</button>
+        <button type="button" class="mod-btn" id="btnUtilityOnly" aria-pressed="false">Utility account ONLY (no Roll #)</button>
         <span class="pill" id="selectedPill">Selected: None</span>
       </div>
 
@@ -1116,6 +1143,10 @@
       const workButtons = qsa('.work-btn');
       const activeWork = { ownership:false, mailing:false, owner:false, agent:false, mortgage:false };
 
+      let utilityOnly = false;
+      const btnUtilityOnly = qs('#btnUtilityOnly');
+
+
       const el = {
         ticket: qs('#ticketNumber'),
         roll: qs('#assessmentRoll'),
@@ -1179,6 +1210,48 @@
       }
 
 
+function selectedWorkKeys(){
+  return Object.entries(activeWork).filter(([_, on]) => on).map(([k]) => k);
+}
+
+// Utility Account ONLY exception:
+// This lets staff do Mailing Address Change and/or Authorized Agent work for UTILITY ONLY,
+// without requiring the Assessment Roll (tax) number.
+function isUtilityOnlyEligible(){
+  const keys = selectedWorkKeys();
+  // Must have a work type selected (Mailing Address Change and/or Authorized Agent)
+  if (!keys.length) return false;
+  return keys.every(k => k === 'mailing' || k === 'agent');
+}
+
+function updateUtilityOnlyButton(){
+  if (!btnUtilityOnly) return;
+  btnUtilityOnly.classList.toggle('active', !!utilityOnly);
+  btnUtilityOnly.setAttribute('aria-pressed', utilityOnly ? 'true' : 'false');
+}
+
+function applyUtilityOnlyLock(){
+  // Only lock/unlock Roll slots when the paper is enabled (some work selected).
+  const any = hasAnyWorkSelected();
+  if (!any) return;
+
+  const eligible = utilityOnly && isUtilityOnlyEligible();
+  if (!el.rollSlots || !el.rollSlots.length) return;
+
+  if (eligible) {
+    // Clear Roll inputs so staff don't accidentally enter a tax-only identifier.
+    if (rollSlotAPI) rollSlotAPI.clear();
+    if (el.roll) el.roll.value = '';
+
+    el.rollSlots.forEach(inp => { inp.disabled = true; });
+    if (el.roll) el.roll.disabled = true;
+  } else {
+    el.rollSlots.forEach(inp => { inp.disabled = false; });
+    if (el.roll) el.roll.disabled = false;
+  }
+}
+
+
       function hasAnyWorkSelected(){
         return Object.values(activeWork).some(Boolean);
       }
@@ -1201,6 +1274,7 @@
 
       function updateSelectedPill(){
         const labels = getSelectedLabels();
+        if (utilityOnly) labels.push('Utility account ONLY');
         selectedPill.textContent = labels.length ? `Selected: ${labels.join(', ')}` : 'Selected: None';
       }
 
@@ -1219,8 +1293,15 @@
           (requirements[key] || []).forEach(r => need.add(r));
         });
 
+        const eligibleUtilityOnly = utilityOnly && isUtilityOnlyEligible();
+        if (eligibleUtilityOnly && need.has('roll')) {
+          need.delete('roll');
+          need.add('utility');
+        }
+
         if (need.has('ticket')) el.ticket.classList.add('required-border');
         if (need.has('roll')) (el.rollWrap || el.roll).classList.add('required-border');
+        if (need.has('utility')) (el.utilityWrap || el.utility).classList.add('required-border');
         if (need.has('property')) el.property.classList.add('required-border');
 
         if (need.has('actionType')) el.ownerActionsBox.classList.add('required-border-box');
@@ -1322,6 +1403,15 @@
           (requirements[key] || []).forEach(r => need.add(r));
         });
 
+const eligibleUtilityOnly = utilityOnly && isUtilityOnlyEligible();
+if (eligibleUtilityOnly && need.has('roll')) {
+  need.delete('roll');
+  need.add('utility');
+}
+if (utilityOnly && !eligibleUtilityOnly) {
+  errs.push('Utility account ONLY can only be used with Mailing Address Change and/or Authorized Agent work.');
+}
+
         const ticket = el.ticket.value.trim();
         const roll = el.roll.value.trim();
         const property = el.property.value.trim();
@@ -1334,12 +1424,17 @@
         }
         if (need.has('roll')) {
           if (roll.length !== 13) errs.push('Assessment Roll Number (after the 19) must be exactly 13 digits.');
+        } else if (roll && roll.length !== 13) {
+          errs.push('Assessment Roll Number (after the 19) must be 13 digits (or leave it blank).');
         }
         if (need.has('property')) {
           if (!property) errs.push('Property Location is required.');
         }
 
-        if (utility && utility.length !== 9) {
+        if (need.has('utility')) {
+          if (!utility) errs.push('Water/Utility Account Number is required (9 digits).');
+          else if (utility.length !== 9) errs.push('Water/Utility Account Number must be exactly 9 digits.');
+        } else if (utility && utility.length !== 9) {
           errs.push('Water/Utility Account Number must be 9 digits (or leave it blank).');
         }
 
@@ -1437,8 +1532,15 @@
         // Authorized Agent work uses the same name lines; update the label when selected.
         updateOwnerTitle();
 
+        // If Utility-only is on but the selection is not eligible, turn it off.
+        if (utilityOnly && !isUtilityOnlyEligible()) {
+          utilityOnly = false;
+          updateUtilityOnlyButton();
+        }
+
         const any = hasAnyWorkSelected();
         setPaperEnabled(any);
+        applyUtilityOnlyLock();
         updateSelectedPill();
         applyRequirements();
         showErrors([]);
@@ -1449,6 +1551,9 @@
         // Clear work selections
         Object.keys(activeWork).forEach(k => activeWork[k] = false);
         workButtons.forEach(b => b.classList.remove('active'));
+
+        utilityOnly = false;
+        updateUtilityOnlyButton();
 
         updateOwnerTitle();
         updateSelectedPill();
@@ -1597,6 +1702,33 @@
         btn.addEventListener('click', () => toggleWork(btn.dataset.work));
       });
 
+// Utility Account ONLY modifier
+if (btnUtilityOnly) {
+  btnUtilityOnly.addEventListener('click', () => {
+    const next = !utilityOnly;
+
+    // Must have a compatible work type selected first.
+    if (next && !hasAnyWorkSelected()) {
+      showErrors(['Select Mailing Address Change and/or Authorized Agent first, then choose Utility account ONLY.']);
+      return;
+    }
+
+    // Only allowed with Mailing Address Change and/or Authorized Agent work.
+    if (next && !isUtilityOnlyEligible()) {
+      showErrors(['Utility account ONLY can only be used with Mailing Address Change and/or Authorized Agent work.']);
+      return;
+    }
+
+    utilityOnly = next;
+    updateUtilityOnlyButton();
+
+    applyUtilityOnlyLock();
+    updateSelectedPill();
+    applyRequirements();
+    showErrors([]);
+  });
+}
+
       qs('#btnClear').addEventListener('click', resetAll);
 
       qs('#btnPrint').addEventListener('click', () => {
@@ -1725,6 +1857,7 @@
       // Start disabled until a work type is selected
       updateSelectedPill();
       updateOwnerTitle();
+      updateUtilityOnlyButton();
 
       setPaperEnabled(false);
     })();
