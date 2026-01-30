@@ -687,23 +687,6 @@
     body.clean-output .screen-only { display: none !important; }
     @media print { .screen-only { display: none !important; } }
 
-    /* Screen-only: 'Same as property' checkbox shown only for Mailing Address Change */
-    #sameAsPropertyWrap { margin-top: 8px; }
-    .sameprop {
-      display: grid;
-      grid-template-columns: 1fr 18px;
-      align-items: center;
-      gap: 10px;
-      font-weight: 700;
-    }
-    .sameprop span { color: #b00000; }
-    .sameprop input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      margin: 0;
-      outline: 1px solid #1c4aa0;
-      outline-offset: -1px;
-    }
 
   
 
@@ -1048,10 +1031,8 @@
         <div class="row-left mailing-left">
           Mailing<br>Address:
           <label class="siteaddr"><span>Site address</span><input id="sameAsSite" type="checkbox" /></label>
-          <div id="sameAsPropertyWrap" class="screen-only" style="display:none;">
-            <label class="sameprop"><span>Same as property</span><input id="sameAsProperty" type="checkbox" /></label>
-          </div>
         </div>
+
         <!-- Mailing Address: 4 lines like the PDF area -->
         <div class="row-right" role="group" aria-label="Mailing address lines" id="mailingBox">
           <div class="write-grid">
@@ -1153,8 +1134,6 @@
         closingBox: qs('#closingBox'),
 
         sameAsSite: qs('#sameAsSite'),
-        sameAsPropertyWrap: qs('#sameAsPropertyWrap'),
-        sameAsProperty: qs('#sameAsProperty'),
         mailingLines: qsa('.mailing-line', paper),
 
         deleteMortgage: qs('#deleteMortgage'),
@@ -1173,21 +1152,8 @@
         mortgageBox: qs('#mortgageBox'),
       };
 
-      // Owner(s) action checkboxes: allow only one selected at a time
-      // (keeps checkbox look, but behaves like a radio group).
-      function makeSingleSelect(checkboxes){
-        if (!Array.isArray(checkboxes) || checkboxes.length === 0) return;
-        checkboxes.forEach(cb => {
-          if (!cb) return;
-          cb.addEventListener('change', () => {
-            if (!cb.checked) return; // user unchecked; allow none selected
-            checkboxes.forEach(other => {
-              if (other && other !== cb) other.checked = false;
-            });
-          });
-        });
-      }
-      makeSingleSelect(el.actionChecks);
+      // Owner(s) action checkboxes: allow multiple selections (default checkbox behavior)
+
 
 
       const allPaperInputs = qsa('input, textarea, select, button.date-cal-btn', paper);
@@ -1394,8 +1360,11 @@
         }
 
         if (need.has('mailing')) {
-          const any = el.mailingLines.some(i => i.value.trim() !== '');
-          if (!any) errs.push('Enter at least one Mailing Address line.');
+          // If "Site address" is checked, Mailing Address is derived from Property Location.
+          if (!(el.sameAsSite && el.sameAsSite.checked)) {
+            const any = el.mailingLines.some(i => i.value.trim() !== '');
+            if (!any) errs.push('Enter at least one Mailing Address line.');
+          }
         }
 
 
@@ -1423,69 +1392,34 @@
         return errs;
       }
 
-      let siteAutoChecked = false;
-
-      function setSameAsProperty(on){
-        if (!el.sameAsProperty) return;
+      
+      // Mailing Address: "Site address" checkbox behavior
+      // If checked, copy Property Location into the first mailing line and lock the mailing lines.
+      // If unchecked, re-enable the mailing lines for manual entry.
+      function setMailingSameAsSite(on){
+        if (!el.mailingLines || el.mailingLines.length === 0) return;
 
         if (on) {
-          // Check the printed 'Site address' box for the user (so it shows on the PDF),
-          // but do NOT let that box control autofill behavior.
-          if (el.sameAsSite && !el.sameAsSite.checked) {
-            el.sameAsSite.checked = true;
-            siteAutoChecked = true;
-          }
-
-          const prop = el.property.value.trim();
+          const prop = (el.property && el.property.value) ? el.property.value.trim() : '';
           el.mailingLines.forEach((inp, idx) => {
+            if (!inp) return;
+            inp.dataset.autofilled = '1';
             if (idx === 0) inp.value = prop;
             else inp.value = '';
             inp.disabled = true;
           });
         } else {
-          el.mailingLines.forEach(inp => inp.disabled = false);
-
-          // Only undo Site address if we auto-checked it AND Mailing Address Change is not selected.
-          // (When Mailing Address Change is selected, Site address is forced checked.)
-          if (siteAutoChecked && el.sameAsSite && !activeWork.mailing) {
-            el.sameAsSite.checked = false;
-          }
-          siteAutoChecked = false;
+          el.mailingLines.forEach(inp => {
+            if (!inp) return;
+            inp.disabled = false;
+            if (inp.dataset.autofilled === '1') {
+              inp.value = '';
+              delete inp.dataset.autofilled;
+            }
+          });
         }
       }
 
-      function updateSameAsPropertyVisibility(){
-        if (!el.sameAsPropertyWrap || !el.sameAsProperty) return;
-        const show = !!activeWork.mailing;
-        el.sameAsPropertyWrap.style.display = show ? 'block' : 'none';
-
-        // Site address checkbox behavior:
-        // - If Mailing Address Change is selected: force CHECKED (and lock it)
-        // - If Mailing Address Change is deselected: auto-UNCHECK only if we forced it
-        // - Otherwise (other work selections): allow the user to check/uncheck normally
-        if (el.sameAsSite) {
-          const anyWork = hasAnyWorkSelected();
-          const wasForced = el.sameAsSite.dataset.forcedByMailing === '1';
-
-          if (activeWork.mailing) {
-            el.sameAsSite.checked = true;
-            el.sameAsSite.dataset.forcedByMailing = '1';
-          } else {
-            if (wasForced) el.sameAsSite.checked = false;
-            el.sameAsSite.dataset.forcedByMailing = '0';
-          }
-
-          // Lock only while Mailing Address Change is selected.
-          // If no work is selected at all, keep paper disabled as usual.
-          el.sameAsSite.disabled = activeWork.mailing || !anyWork;
-        }
-
-        // If Mailing Address Change is not selected, force this helper OFF.
-        if (!show && el.sameAsProperty.checked) {
-          el.sameAsProperty.checked = false;
-          setSameAsProperty(false);
-        }
-      }
 
       function toggleWork(key){
         activeWork[key] = !activeWork[key];
@@ -1507,7 +1441,6 @@
         setPaperEnabled(any);
         updateSelectedPill();
         applyRequirements();
-        updateSameAsPropertyVisibility();
         showErrors([]);
       }
 
@@ -1527,11 +1460,9 @@
           else inp.value = '';
         });
 
-        // Make sure mailing lines are enabled after reset
-        if (el.sameAsProperty) el.sameAsProperty.checked = false;
-        setSameAsProperty(false);
-        siteAutoChecked = false;
-        updateSameAsPropertyVisibility();
+        // Reset Mailing Address section
+        if (el.sameAsSite) el.sameAsSite.checked = false;
+        setMailingSameAsSite(false);
 
         // Keep hidden values in sync with the slot UI after clearing
         if (rollSlotAPI) rollSlotAPI.clear();
@@ -1565,9 +1496,9 @@
           } else {
             disabled.forEach(inp => inp.disabled = true);
           }
-          if (el.sameAsProperty && el.sameAsProperty.checked) {
-            // ensure mailing lines remain disabled when Same as property is checked
-            setSameAsProperty(true);
+          if (el.sameAsSite && el.sameAsSite.checked) {
+            // ensure mailing lines remain locked when Site address is checked
+            setMailingSameAsSite(true);
           }
         }
       }
@@ -1780,20 +1711,15 @@
         });
       }
 
-      // Same as property (screen-only) logic
-      if (el.sameAsProperty) {
-        el.sameAsProperty.addEventListener('change', () => setSameAsProperty(el.sameAsProperty.checked));
-      }
-
-      // Site address checkbox: lock only while Mailing Address Change is selected
+      // Mailing Address checkbox (Site address): if checked, lock mailing lines to Property Location.
       if (el.sameAsSite) {
         el.sameAsSite.addEventListener('change', () => {
-          if (activeWork.mailing) el.sameAsSite.checked = true;
+          setMailingSameAsSite(el.sameAsSite.checked);
         });
       }
 
       el.property.addEventListener('input', () => {
-        if (el.sameAsProperty && el.sameAsProperty.checked) setSameAsProperty(true);
+        if (el.sameAsSite && el.sameAsSite.checked) setMailingSameAsSite(true);
       });
 
       // Start disabled until a work type is selected
@@ -1801,7 +1727,6 @@
       updateOwnerTitle();
 
       setPaperEnabled(false);
-      updateSameAsPropertyVisibility();
     })();
   </script>
 
